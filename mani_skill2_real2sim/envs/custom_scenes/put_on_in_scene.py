@@ -486,3 +486,216 @@ class PutEggplantInBasketScene(PutOnBridgeInSceneEnv):
             scale=5,
             shadow_map_size=2048,
         )
+        
+        
+# TODO: adding more objects to the bridge scene, and add more distractions
+# TODO: note that lots of the code here is copied from the PutOnBridgeInSceneEnv class, to avoid complicating the structure
+class PutonBridgeInSceneEnvV1(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnv):
+    def __init__(self,
+        source_obj_name: str = None,
+        target_obj_name: str = None,
+        other_obj_names: List[str] = None,
+        xy_configs: List[np.ndarray] = None,
+        quat_configs: List[np.ndarray] = None,
+        **kwargs,
+    ):
+        if other_obj_names is None:
+            self._other_obj_names = ["bridge_spoon_generated_modified", "eggplant"]
+        else:
+            self._other_obj_names = other_obj_names
+
+        self._source_obj_name = source_obj_name
+        self._target_obj_name = target_obj_name
+        self._xy_configs = xy_configs
+        self._quat_configs = quat_configs
+        super().__init__(**kwargs)
+        
+    # override the _setup_prepackaged_env_init_config method
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "widowx"
+        ret["control_freq"] = 5
+        ret["sim_freq"] = 500
+        ret["control_mode"] = "arm_pd_ee_target_delta_pose_align2_gripper_pd_joint_pos"
+        ret["scene_name"] = "bridge_table_1_v1"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/bridge_real_eval_1_rabbit.JPG"
+        )
+        ret["rgb_overlay_cameras"] = ["3rd_view_camera"]
+        
+        return ret
+    
+    # modify to include additional objects
+    def reset(self, seed=None, options=None):
+        if options is None:
+            options = dict()
+        options = options.copy()
+
+        self.set_episode_rng(seed)
+
+        obj_init_options = options.get("obj_init_options", {})
+        obj_init_options = obj_init_options.copy()
+        episode_id = obj_init_options.get(
+            "episode_id",
+            self._episode_rng.randint(len(self._xy_configs) * len(self._quat_configs)),
+        )
+        xy_config = self._xy_configs[
+            (episode_id % (len(self._xy_configs) * len(self._quat_configs)))
+            // len(self._quat_configs)
+        ]
+        quat_config = self._quat_configs[episode_id % len(self._quat_configs)]
+        # make sure the source is always at 0 and the target is always at 1
+        options["model_ids"] = [self._source_obj_name, self._target_obj_name] + self._other_obj_names
+        obj_init_options["source_obj_id"] = 0
+        obj_init_options["target_obj_id"] = 1
+        obj_init_options["init_xys"] = xy_config # size: 4 x 2
+        obj_init_options["init_rot_quats"] = quat_config # size: 4 x 4
+        options["obj_init_options"] = obj_init_options
+
+        obs, info = super().reset(seed=self._episode_seed, options=options)
+        info.update({"episode_id": episode_id})
+        return obs, info
+    
+    def _additional_prepackaged_config_reset(self, options):
+        # use prepackaged robot evaluation configs under visual matching setup
+        options["robot_init_options"] = {
+            "init_xy": [0.147, 0.028],
+            "init_rot_quat": [0, 0, 0, 1],
+        }
+        return False
+
+    def _load_model(self):
+        self.episode_objs = []
+        for (model_id, model_scale) in zip(
+            self.episode_model_ids, self.episode_model_scales
+        ):
+            density = self.model_db[model_id].get("density", 1000)
+
+            obj = self._build_actor_helper(
+                model_id,
+                self._scene,
+                scale=model_scale,
+                density=density,
+                physical_material=self._scene.create_physical_material(
+                    static_friction=self.obj_static_friction,
+                    dynamic_friction=self.obj_dynamic_friction,
+                    restitution=0.0,
+                ),
+                root_dir=self.asset_root,
+            )
+            obj.name = model_id
+            self.episode_objs.append(obj)
+    
+    
+# define a new  environment, it is same as the PutCarrotOnPlateInScnene,
+# but the rgb_overlay_path is changed to  "real_inpainting/bridge_real_eval_1_rabbit.JPG"
+# and add the spoon object to the scene, as an additional object besides the carrot and plate
+@register_env("PutCarrotOnPlateInScene-v1", max_episode_steps=60)
+class PutCarrotOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
+    def __init__(self, **kwargs):
+        source_obj_name = "bridge_carrot_generated_modified"
+        target_obj_name = "bridge_plate_objaverse_larger"
+        # add addional object to the scene
+        additional_obj_name = ["bridge_spoon_generated_modified", "eggplant"]
+        model_ids = [source_obj_name, target_obj_name] + additional_obj_name
+        
+        # Define positions for all objects
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None] + xy_center[None]
+
+        # Create configurations for all objects
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    # Add positions for additional objects
+                    additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                    xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                    xy_configs.append(xy_config)
+
+        # Define rotations for all objects
+        quat_configs = [
+            np.array([
+                euler2quat(0, 0, np.pi),  # carrot
+                [1, 0, 0, 0],  # plate
+                [1, 0, 0, 0],  # spoon, following the original config in their separate two-object env
+                euler2quat(0, 0, 0, 'sxyz'),  # eggplant
+            ]), # size: 4 x 4
+            np.array([
+                euler2quat(0, 0, -np.pi/2),  # carrot
+                [1, 0, 0, 0],  # plate
+                euler2quat(0, 0, np.pi/2),  # spoon
+                euler2quat(0, 0, 1 * np.pi / 4, 'sxyz')  # eggplant
+            ])
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )   
+    
+    def get_language_instruction(self, **kwargs):
+        return "put the vegetable that a rabbit likes most on the plate"
+        
+
+@register_env("PutEggplantOnPlateInScene-v1", max_episode_steps=60)
+class PutEggplantOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
+    def __init__(self, **kwargs):
+        source_obj_name = "eggplant"
+        target_obj_name = "bridge_plate_objaverse_larger"
+        # add addional object to the scene
+        additional_obj_name = ["bridge_carrot_generated_modified", "bridge_spoon_generated_modified"]
+        model_ids = [source_obj_name, target_obj_name] + additional_obj_name
+        
+        # Define positions for all objects
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None] + xy_center[None]
+
+        # Create configurations for all objects
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    # Add positions for additional objects
+                    additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                    xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                    xy_configs.append(xy_config)
+
+        # Define rotations for all objects
+        quat_configs = [
+            np.array([
+                euler2quat(0, 0, 0, 'sxyz'),  # eggplant
+                [1, 0, 0, 0],  # plate
+                euler2quat(0, 0, np.pi),  # carrot
+                [1, 0, 0, 0],  # spoon, following the original config in their separate two-object env
+                
+            ]), # size: 4 x 4
+            np.array([
+                euler2quat(0, 0, 1 * np.pi / 4, 'sxyz'),  # eggplant
+                [1, 0, 0, 0],  # plate
+                euler2quat(0, 0, -np.pi/2),  # carrot
+                euler2quat(0, 0, np.pi/2),  # spoon
+                
+            ])
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            other_obj_names=additional_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )   
+    
+    def get_language_instruction(self, **kwargs):
+        return "put the eggplant on the plate"
+        
