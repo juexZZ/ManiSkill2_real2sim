@@ -495,3 +495,7 @@ class CustomOtherObjectsInSceneEnv(CustomSceneEnv):
 
 class CustomBridgeObjectsInSceneEnv(CustomOtherObjectsInSceneEnv):
     DEFAULT_MODEL_JSON = "info_bridge_custom_v0.json"
+    
+# ! add additional objects that are out of distribution, for example, from fractal.
+class CustomBridgeObjectsInSceneEnvV1(CustomBridgeObjectsInSceneEnv):
+    DEFAULT_MODEL_JSON = "info_bridge_custom_aqua.json"
