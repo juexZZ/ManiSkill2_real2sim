@@ -16,7 +16,7 @@ from .move_near_in_scene import MoveNearInSceneEnv
 class PutOnInSceneEnv(MoveNearInSceneEnv):
     
     def reset(self, *args, **kwargs):
-        self.consecutive_grasp = 0
+        self.consecutive_grasp = 0 
         return super().reset(*args, **kwargs)
 
     def _initialize_episode_stats(self):
@@ -812,3 +812,58 @@ class PutCokeCanOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
     def get_language_instruction(self, **kwargs):
         return "put the coke can on the plate"
         
+        
+@register_env("PutCokeCanOnPepsiCanInScene-v1", max_episode_steps=60)
+class PutCokeCanOnPepsiCanInSceneV1(PutonBridgeInSceneEnvV1):
+    def __init__(self, **kwargs):
+        source_obj_name = "coke_can"
+        target_obj_name = "pepsi_can"
+        additional_obj_name = ["bridge_plate_objaverse_larger", "bridge_spoon_generated_modified"]
+        model_ids = [source_obj_name, target_obj_name] + additional_obj_name
+        
+        
+        # Define positions for all objects
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None] + xy_center[None]
+
+        # Create configurations for all objects
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    # Add positions for additional objects
+                    additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                    xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                    xy_configs.append(xy_config)
+
+        # Define rotations for all objects
+        quat_configs = [
+            np.array([
+                euler2quat(np.pi/2, 0, 0),  # upright can
+                euler2quat(np.pi/2, 0, 0),  # upright can
+                [1, 0, 0, 0],  # plate
+                [1, 0, 0, 0],  # spoon, following the original config in their separate two-object env
+                
+            ]), # size: 4 x 4
+            np.array([
+                euler2quat(0, 0, np.pi/2),  # lay vertically can
+                euler2quat(np.pi/2, 0, 0),  # upright can
+                [1, 0, 0, 0],  # plate
+                euler2quat(0, 0, np.pi/2),  # spoon
+                
+            ])
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            other_obj_names=additional_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+        
+    def get_language_instruction(self, **kwargs):
+        return "put the coke can on top of the pepsi can"
