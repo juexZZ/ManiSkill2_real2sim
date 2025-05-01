@@ -146,7 +146,8 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
         return f"put {src_name} on {tgt_name}"
 
 
-class PutOnBridgeInSceneEnv(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnv):
+class PutOnBridgeInSceneEnv(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
+    """Original PutOnBridgeInSceneEnv, but now with more objects in the model_db"""
     def __init__(
         self,
         source_obj_name: str = None,
@@ -488,9 +489,8 @@ class PutEggplantInBasketScene(PutOnBridgeInSceneEnv):
         )
         
         
-# TODO: adding more objects to the bridge scene, and add more distractions
-# TODO: note that lots of the code here is copied from the PutOnBridgeInSceneEnv class, to avoid complicating the structure
-class PutonBridgeInSceneEnvV1(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
+class PutOnBridgeInSceneEnvV1(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
+    """adding object distrctions, now support 4 objects in the scene"""
     def __init__(self,
         source_obj_name: str = None,
         target_obj_name: str = None,
@@ -500,7 +500,7 @@ class PutonBridgeInSceneEnvV1(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
         **kwargs,
     ):
         if other_obj_names is None:
-            self._other_obj_names = ["bridge_spoon_generated_modified", "eggplant"]
+            self._other_obj_names = []
         else:
             self._other_obj_names = other_obj_names
 
@@ -521,7 +521,7 @@ class PutonBridgeInSceneEnvV1(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
         ret["scene_name"] = "bridge_table_1_v1"
         ret["camera_cfgs"] = {"add_segmentation": True}
         ret["rgb_overlay_path"] = str(
-            ASSET_DIR / "real_inpainting/bridge_real_eval_1_rabbit.JPG"
+            ASSET_DIR / "real_inpainting/bridge_real_eval_1.png"
         )
         ret["rgb_overlay_cameras"] = ["3rd_view_camera"]
         
@@ -587,13 +587,29 @@ class PutonBridgeInSceneEnvV1(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
             )
             obj.name = model_id
             self.episode_objs.append(obj)
+            
+            
+class PutonBridgeInSceneEnvV1Bgd(PutOnBridgeInSceneEnvV1):
+    """with distractions in the background, and support 4 objects in the scene"""
+    # override the _setup_prepackaged_env_init_config method
+    def _setup_prepackaged_env_init_config(self):
+        ret = {}
+        ret["robot"] = "widowx"
+        ret["control_freq"] = 5
+        ret["sim_freq"] = 500
+        ret["control_mode"] = "arm_pd_ee_target_delta_pose_align2_gripper_pd_joint_pos"
+        ret["scene_name"] = "bridge_table_1_v1"
+        ret["camera_cfgs"] = {"add_segmentation": True}
+        ret["rgb_overlay_path"] = str(
+            ASSET_DIR / "real_inpainting/bridge_real_eval_1_rabbit.JPG" # ! background image changed
+        )
+        ret["rgb_overlay_cameras"] = ["3rd_view_camera"]
+        
+        return ret
     
-    
-# define a new  environment, it is same as the PutCarrotOnPlateInScnene,
-# but the rgb_overlay_path is changed to  "real_inpainting/bridge_real_eval_1_rabbit.JPG"
-# and add the spoon object to the scene, as an additional object besides the carrot and plate
+# * distraction objects and distraction background, and logics in language instruction
 @register_env("PutCarrotOnPlateInScene-v1", max_episode_steps=60)
-class PutCarrotOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
+class PutCarrotOnPlateInSceneV1(PutonBridgeInSceneEnvV1Bgd):
     def __init__(self, **kwargs):
         source_obj_name = "bridge_carrot_generated_modified"
         target_obj_name = "bridge_plate_objaverse_larger"
@@ -636,6 +652,7 @@ class PutCarrotOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
         super().__init__(
             source_obj_name=source_obj_name,
             target_obj_name=target_obj_name,
+            other_obj_names=additional_obj_name,
             xy_configs=xy_configs,
             quat_configs=quat_configs,
             **kwargs,
@@ -646,7 +663,7 @@ class PutCarrotOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
         
 
 @register_env("PutEggplantOnPlateInScene-v1", max_episode_steps=60)
-class PutEggplantOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
+class PutEggplantOnPlateInSceneV1(PutonBridgeInSceneEnvV1Bgd):
     def __init__(self, **kwargs):
         source_obj_name = "eggplant"
         target_obj_name = "bridge_plate_objaverse_larger"
@@ -702,7 +719,7 @@ class PutEggplantOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
     
 
 @register_env("PutEggplantOnCarrotInScene-v1", max_episode_steps=60)
-class PutEggplantOnCarrotInSceneV1(PutonBridgeInSceneEnvV1):
+class PutEggplantOnCarrotInSceneV1(PutonBridgeInSceneEnvV1Bgd):
     def __init__(self, **kwargs):
         source_obj_name = "eggplant"
         target_obj_name = "bridge_carrot_generated_modified"
@@ -758,7 +775,7 @@ class PutEggplantOnCarrotInSceneV1(PutonBridgeInSceneEnvV1):
     
     
 @register_env("PutCokeCanOnPlateInScene-v1", max_episode_steps=60)
-class PutCokeCanOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
+class PutCokeCanOnPlateInSceneV1(PutonBridgeInSceneEnvV1Bgd):
     def __init__(self, **kwargs):
         source_obj_name = "coke_can"
         target_obj_name = "bridge_plate_objaverse_larger"
@@ -811,10 +828,179 @@ class PutCokeCanOnPlateInSceneV1(PutonBridgeInSceneEnvV1):
         
     def get_language_instruction(self, **kwargs):
         return "put the coke can on the plate"
+
+# * unseen target, seen source
+@register_env("PutCarrotOnCokeCanInScene-v1", max_episode_steps=60)
+class PutCarrotOnCokeCanInSceneV1(PutonBridgeInSceneEnvV1Bgd):
+    def __init__(self, **kwargs):
+        source_obj_name = "bridge_carrot_generated_modified"
+        target_obj_name = "coke_can"
+        additional_obj_name = ["bridge_plate_objaverse_larger", "bridge_spoon_generated_modified"]
+        model_ids = [source_obj_name, target_obj_name] + additional_obj_name
         
+        
+        # Define positions for all objects
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None] + xy_center[None]
+
+        # Create configurations for all objects
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    # Add positions for additional objects
+                    additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                    xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                    xy_configs.append(xy_config)
+
+        # Define rotations for all objects
+        quat_configs = [
+            np.array([
+                euler2quat(0, 0, np.pi),  # carrot
+                euler2quat(np.pi/2, 0, 0),  # upright can
+                [1, 0, 0, 0],  # plate
+                [1, 0, 0, 0],  # spoon, following the original config in their separate two-object env
+                
+            ]), # size: 4 x 4
+            np.array([
+                euler2quat(0, 0, -np.pi/2),  # carrot
+                euler2quat(np.pi/2, 0, 0),  # upright can
+                [1, 0, 0, 0],  # plate
+                euler2quat(0, 0, np.pi/2),  # spoon
+                
+            ])
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            other_obj_names=additional_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+        
+    def get_language_instruction(self, **kwargs):
+        return "Lay the carrot on the coke can"
+
+# * unseen target (unseen combination) seen objects
+@register_env("PutCarrotOnGreenCubeInScene-v1", max_episode_steps=60)
+class PutCarrotOnGreenCubeInSceneV1(PutonBridgeInSceneEnvV1Bgd):
+    def __init__(self, **kwargs):
+        source_obj_name = "bridge_carrot_generated_modified"
+        target_obj_name = "baked_green_cube_3cm"
+        additional_obj_name = ["bridge_plate_objaverse_larger", "bridge_spoon_generated_modified"]
+        model_ids = [source_obj_name, target_obj_name] + additional_obj_name
+        
+        
+        # Define positions for all objects
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None] + xy_center[None]
+
+        # Create configurations for all objects
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    # Add positions for additional objects
+                    additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                    xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                    xy_configs.append(xy_config)
+
+        # Define rotations for all objects
+        quat_configs = [
+            np.array([
+                euler2quat(0, 0, np.pi),  # carrot
+                [1, 0, 0, 0],  # cube
+                [1, 0, 0, 0],  # plate
+                [1, 0, 0, 0],  # spoon, following the original config in their separate two-object env
+                
+            ]), # size: 4 x 4
+            np.array([
+                euler2quat(0, 0, -np.pi/2),  # carrot
+                [1, 0, 0, 0],  # cube
+                [1, 0, 0, 0],  # plate
+                euler2quat(0, 0, np.pi/2),  # spoon
+                
+            ])
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            other_obj_names=additional_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+        
+    def get_language_instruction(self, **kwargs):
+        return "Place the carrot on the green cube"
+
+
+# * ood action, seen objects.
+@register_env("PutPlateOnGreenCubeInScene-v1", max_episode_steps=60)
+class PutPlateOnGreenCubeInSceneV1(PutonBridgeInSceneEnvV1Bgd):
+    def __init__(self, **kwargs):
+        source_obj_name = "bridge_plate_objaverse_larger"
+        target_obj_name = "baked_green_cube_3cm"
+        additional_obj_name = ["bridge_carrot_generated_modified", "bridge_spoon_generated_modified"]
+        model_ids = [source_obj_name, target_obj_name] + additional_obj_name
+        
+        
+        # Define positions for all objects
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None] + xy_center[None]
+
+        # Create configurations for all objects
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    # Add positions for additional objects
+                    additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                    xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                    xy_configs.append(xy_config)
+
+        # Define rotations for all objects
+        quat_configs = [
+            np.array([
+                [1, 0, 0, 0],  # plate
+                [1, 0, 0, 0],  # cube
+                euler2quat(0, 0, np.pi),  # carrot
+                [1, 0, 0, 0],  # spoon, following the original config in their separate two-object env
+                
+            ]), # size: 4 x 4
+            np.array([
+                [1, 0, 0, 0],  # plate
+                [1, 0, 0, 0],  # cube
+                euler2quat(0, 0, -np.pi/2),  # carrot
+                euler2quat(0, 0, np.pi/2),  # spoon
+                
+            ])
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            other_obj_names=additional_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+        
+    def get_language_instruction(self, **kwargs):
+        return "Put the plate on the green cube"
+
         
 @register_env("PutCokeCanOnPepsiCanInScene-v1", max_episode_steps=60)
-class PutCokeCanOnPepsiCanInSceneV1(PutonBridgeInSceneEnvV1):
+class PutCokeCanOnPepsiCanInSceneV1(PutonBridgeInSceneEnvV1Bgd):
     def __init__(self, **kwargs):
         source_obj_name = "coke_can"
         target_obj_name = "pepsi_can"
