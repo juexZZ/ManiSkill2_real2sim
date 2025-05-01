@@ -194,7 +194,7 @@ class PutCarrotOnSpongeInScene(PutOnBridgeInSceneEnv):
 class PutCarrotOnKeyboardInScene(PutOnBridgeInSceneEnv):
     def __init__(self, **kwargs):
         source_obj_name = "bridge_carrot_generated_modified"
-        target_obj_name = "keyboard"
+        target_obj_name = "keyboard_smaller"
         
         xy_center = np.array([-0.16, 0.00])
         half_edge_length_x = 0.075
@@ -231,7 +231,7 @@ class PutCarrotOnKeyboardInScene(PutOnBridgeInSceneEnv):
 class PutCokeCanOnKeyboardInScene(PutOnBridgeInSceneEnv):
     def __init__(self, **kwargs):
         source_obj_name = "coke_can"
-        target_obj_name = "keyboard"
+        target_obj_name = "keyboard_smaller"
         
         xy_center = np.array([-0.16, 0.00])
         half_edge_length_x = 0.075
