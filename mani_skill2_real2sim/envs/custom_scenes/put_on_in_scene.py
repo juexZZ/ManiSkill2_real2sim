@@ -607,14 +607,68 @@ class PutonBridgeInSceneEnvV1Bgd(PutOnBridgeInSceneEnvV1):
         
         return ret
     
-# * distraction objects and distraction background, and logics in language instruction
-@register_env("PutCarrotOnPlateInScene-v1", max_episode_steps=60)
-class PutCarrotOnPlateInSceneV1(PutonBridgeInSceneEnvV1Bgd):
+# * object distraction.
+@register_env("PutSpoonOnTableClothInScene-distract", max_episode_steps=60)
+class PutSpoonOnTableClothInSceneDistract(PutOnBridgeInSceneEnvV1):
+    def __init__(self, **kwargs):
+        source_obj_name = "bridge_spoon_generated_modified"
+        target_obj_name = "table_cloth_generated_shorter"
+        # add addional object to the scene
+        additional_obj_name = ["bridge_carrot_generated_modified", "bridge_plate_objaverse_larger"]
+        model_ids = [source_obj_name, target_obj_name] + additional_obj_name
+        
+        # Define positions for all objects
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None] + xy_center[None]
+
+        # Create configurations for all objects
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    # Add positions for additional objects
+                    additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                    xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                    xy_configs.append(xy_config)
+
+        # Define rotations for all objects
+        quat_configs = [
+            np.array([
+                [1, 0, 0, 0],  # spoon, following the original config in their separate two-object env
+                [1, 0, 0, 0],  # table cloth
+                euler2quat(0, 0, np.pi),  # carrot
+                [1, 0, 0, 0],  # plate
+            ]), # size: 4 x 4
+            np.array([
+                euler2quat(0, 0, np.pi/2),  # spoon
+                [1, 0, 0, 0],  # table cloth
+                euler2quat(0, 0, -np.pi/2),  # carrot
+                [1, 0, 0, 0],  # plate
+            ])
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            other_obj_names=additional_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )   
+    
+    def get_language_instruction(self, **kwargs):
+        return "put the spoon on the towel"
+    
+
+@register_env("PutCarrotOnPlateInScene-distract", max_episode_steps=60)
+class PutCarrotOnPlateInSceneDistract(PutOnBridgeInSceneEnvV1):
     def __init__(self, **kwargs):
         source_obj_name = "bridge_carrot_generated_modified"
         target_obj_name = "bridge_plate_objaverse_larger"
         # add addional object to the scene
-        additional_obj_name = ["bridge_spoon_generated_modified", "eggplant"]
+        additional_obj_name = ["bridge_spoon_generated_modified", "table_cloth_generated_shorter"]
         model_ids = [source_obj_name, target_obj_name] + additional_obj_name
         
         # Define positions for all objects
@@ -640,13 +694,13 @@ class PutCarrotOnPlateInSceneV1(PutonBridgeInSceneEnvV1Bgd):
                 euler2quat(0, 0, np.pi),  # carrot
                 [1, 0, 0, 0],  # plate
                 [1, 0, 0, 0],  # spoon, following the original config in their separate two-object env
-                euler2quat(0, 0, 0, 'sxyz'),  # eggplant
+                [1, 0, 0, 0]  # table cloth
             ]), # size: 4 x 4
             np.array([
                 euler2quat(0, 0, -np.pi/2),  # carrot
                 [1, 0, 0, 0],  # plate
                 euler2quat(0, 0, np.pi/2),  # spoon
-                euler2quat(0, 0, 1 * np.pi / 4, 'sxyz')  # eggplant
+                [1, 0, 0, 0]  # table cloth
             ])
         ]
         super().__init__(
@@ -659,7 +713,7 @@ class PutCarrotOnPlateInSceneV1(PutonBridgeInSceneEnvV1Bgd):
         )   
     
     def get_language_instruction(self, **kwargs):
-        return "put the vegetable that a rabbit likes most on the plate"
+        return "put carrot on plate"
         
 
 @register_env("PutEggplantOnPlateInScene-v1", max_episode_steps=60)
@@ -1053,3 +1107,250 @@ class PutCokeCanOnPepsiCanInSceneV1(PutonBridgeInSceneEnvV1Bgd):
         
     def get_language_instruction(self, **kwargs):
         return "put the coke can on top of the pepsi can"
+
+
+
+# * language variation, inherit existing task and ONLY change language instruction.
+@register_env("PutCarrotOnPlateInScene-LangV1", max_episode_steps=60)
+class PutCarrotOnPlateInSceneLangV1(PutCarrotOnPlateInScene):
+    def get_language_instruction(self, **kwargs):
+        return "put rabbit's favorite vegetable on the plate"
+    
+@register_env("PutCarrotOnPlateInScene-LangV2", max_episode_steps=60)
+class PutCarrotOnPlateInSceneLangV2(PutCarrotOnPlateInScene):
+    def get_language_instruction(self, **kwargs):
+        return "pick up the carrot and drop it off on the plate"
+
+@register_env("PutCarrotOnPlateInScene-LangV3", max_episode_steps=60)
+class PutCarrotOnPlateInSceneLangV3(PutCarrotOnPlateInSceneDistract):
+    def get_language_instruction(self, **kwargs):
+        return "put the carrot on the plate, not the towel"
+    
+@register_env("PutSpoonOnTableClothInScene-LangV1", max_episode_steps=60)
+class PutSpoonOnTableClothInSceneLangV1(PutSpoonOnTableClothInScene):
+    def get_language_instruction(self, **kwargs):
+        return "put the kitchenware for eating soup on the towel"
+    
+@register_env("PutSpoonOnTableClothInScene-LangV2", max_episode_steps=60)
+class PutSpoonOnTableClothInSceneLangV2(PutOnBridgeInSceneEnvV1):
+    def __init__(self, **kwargs):
+        source_obj_name = "bridge_spoon_generated_modified"
+        target_obj_name = "table_cloth_generated_shorter"
+        # add addional object to the scene
+        additional_obj_name = ["bridge_carrot_generated_modified", "sponge"]
+        model_ids = [source_obj_name, target_obj_name] + additional_obj_name
+        
+        # Define positions for all objects
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None] + xy_center[None]
+
+        # Create configurations for all objects
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    # Add positions for additional objects
+                    additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                    xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                    xy_configs.append(xy_config)
+
+        # Define rotations for all objects
+        quat_configs = [
+            np.array([
+                [1, 0, 0, 0],  # spoon, following the original config in their separate two-object env
+                [1, 0, 0, 0],  # table cloth
+                euler2quat(0, 0, np.pi),  # carrot
+                [1, 0, 0, 0],  # sponge
+            ]), # size: 4 x 4
+            np.array([
+                euler2quat(0, 0, np.pi/2),  # spoon
+                [1, 0, 0, 0],  # table cloth
+                euler2quat(0, 0, -np.pi/2),  # carrot
+                [1, 0, 0, 0],  # sponge
+            ])
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            other_obj_names=additional_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )   
+    
+    def get_language_instruction(self, **kwargs):
+        return "put the kitchenware for eating soup on the towel"
+    
+@register_env("PutEggplantInBasketScene-LangV1", max_episode_steps=120)
+class PutEggplantInBasketSceneLangV1(PutEggplantInBasketScene):
+    def get_language_instruction(self, **kwargs):
+        return "put the purple object into yellow basket"
+    
+@register_env("PutEggplantInBasketScene-LangV2", max_episode_steps=120)
+class PutEggplantInBasketSceneLangV2(PutEggplantInBasketScene):
+    def get_language_instruction(self, **kwargs):
+        return "put eggplant into where the dishes usually get dried"    
+    
+
+@register_env("PutCarrotOnPlateInScene-LangV4", max_episode_steps=60)
+class PutCarrotOnPlateInSceneLangV4(PutCarrotOnPlateInScene):
+    def get_language_instruction(self, **kwargs):
+        return "pick up the carrot and drop it elsewhere on the table, not on the plate."
+    
+    # * modify the evaluate function to reflect this abnormal language instruction, basically a nagation of the success condition.
+    def evaluate(self, success_require_src_completely_on_target=True, z_flag_required_offset=0.02, **kwargs):
+        source_obj_pose = self.source_obj_pose
+        target_obj_pose = self.target_obj_pose
+
+        # whether moved the correct object
+        source_obj_xy_move_dist = np.linalg.norm(
+            self.episode_source_obj_xyz_after_settle[:2] - self.source_obj_pose.p[:2]
+        )
+        other_obj_xy_move_dist = []
+        for obj, obj_xyz_after_settle in zip(
+            self.episode_objs, self.episode_obj_xyzs_after_settle
+        ):
+            if obj.name == self.episode_source_obj.name:
+                continue
+            other_obj_xy_move_dist.append(
+                np.linalg.norm(obj_xyz_after_settle[:2] - obj.pose.p[:2])
+            )
+        moved_correct_obj = (source_obj_xy_move_dist > 0.03) and (
+            all([x < source_obj_xy_move_dist for x in other_obj_xy_move_dist])
+        )
+        moved_wrong_obj = any([x > 0.03 for x in other_obj_xy_move_dist]) and any(
+            [x > source_obj_xy_move_dist for x in other_obj_xy_move_dist]
+        )
+
+        # whether the source object is grasped
+        is_src_obj_grasped = self.agent.check_grasp(self.episode_source_obj)
+        if is_src_obj_grasped:
+            self.consecutive_grasp += 1
+        else:
+            self.consecutive_grasp = 0
+        consecutive_grasp = self.consecutive_grasp >= 5
+
+        # whether the source object is on the target object based on bounding box position
+        tgt_obj_half_length_bbox = (
+            self.episode_target_obj_bbox_world / 2
+        )  # get half-length of bbox xy diagonol distance in the world frame at timestep=0
+        src_obj_half_length_bbox = self.episode_source_obj_bbox_world / 2
+
+        pos_src = source_obj_pose.p
+        pos_tgt = target_obj_pose.p
+        offset = pos_src - pos_tgt
+        xy_flag = (
+            np.linalg.norm(offset[:2])
+            <= np.linalg.norm(tgt_obj_half_length_bbox[:2]) + 0.01 # ! was 0.003, loosen the threshold because we are negating the success condition.
+        )
+        z_flag = (offset[2] > 0) and (
+            offset[2] - tgt_obj_half_length_bbox[2] - src_obj_half_length_bbox[2]
+            <= z_flag_required_offset
+        )
+        src_on_target = xy_flag and z_flag
+
+        # if success_require_src_completely_on_target:
+        #     # whether the source object is on the target object based on contact information
+        #     contacts = self._scene.get_contacts()
+        #     flag = True
+        #     robot_link_names = [x.name for x in self.agent.robot.get_links()]
+        #     tgt_obj_name = self.episode_target_obj.name
+        #     ignore_actor_names = [tgt_obj_name] + robot_link_names
+        #     for contact in contacts:
+        #         actor_0, actor_1 = contact.actor0, contact.actor1
+        #         other_obj_contact_actor_name = None
+        #         if actor_0.name == self.episode_source_obj.name:
+        #             other_obj_contact_actor_name = actor_1.name
+        #         elif actor_1.name == self.episode_source_obj.name:
+        #             other_obj_contact_actor_name = actor_0.name
+        #         if other_obj_contact_actor_name is not None:
+        #             # the object is in contact with an actor
+        #             contact_impulse = np.sum(
+        #                 [point.impulse for point in contact.points], axis=0
+        #             )
+        #             if (other_obj_contact_actor_name not in ignore_actor_names) and (
+        #                 np.linalg.norm(contact_impulse) > 1e-6
+        #             ):
+        #                 # the object has contact with an actor other than the robot link or the target object, so the object is not yet put on the target object
+        #                 flag = False
+        #                 break
+        #     src_on_target = src_on_target and flag
+        # ! negate the success condition: moved the correct object, and it is not on the target object.
+        success = (not src_on_target) and moved_correct_obj and consecutive_grasp
+
+        self.episode_stats["moved_correct_obj"] = moved_correct_obj
+        self.episode_stats["moved_wrong_obj"] = moved_wrong_obj
+        self.episode_stats["src_on_target"] = not src_on_target
+        self.episode_stats["is_src_obj_grasped"] = (
+            self.episode_stats["is_src_obj_grasped"] or is_src_obj_grasped
+        )
+        self.episode_stats["consecutive_grasp"] = (
+            self.episode_stats["consecutive_grasp"] or consecutive_grasp
+        )
+
+        return dict(
+            moved_correct_obj=moved_correct_obj,
+            moved_wrong_obj=moved_wrong_obj,
+            is_src_obj_grasped=is_src_obj_grasped,
+            consecutive_grasp=consecutive_grasp,
+            src_on_target=src_on_target,
+            episode_stats=self.episode_stats,
+            success=success,
+        )
+    
+
+@register_env("PutCarrotOnPlateInScene-LangV5", max_episode_steps=60)
+class PutCarrotOnPlateInSceneLangV5(PutOnBridgeInSceneEnvV1):
+    def __init__(self, **kwargs):
+        source_obj_name = "bridge_carrot_generated_modified"
+        target_obj_name = "bridge_plate_objaverse_larger"
+        # add addional object to the scene
+        additional_obj_name = ["eggplant", "rabbit"]
+        model_ids = [source_obj_name, target_obj_name] + additional_obj_name
+        
+        # Define positions for all objects
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None] + xy_center[None]
+
+        # Create configurations for all objects
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    # Add positions for additional objects
+                    additional_positions = [grid_pos[k] for k in range(len(grid_pos)) if k != i and k != j]
+                    xy_config = np.array([grid_pos_1, grid_pos_2] + additional_positions) # size: 4 x 2
+                    xy_configs.append(xy_config)
+
+        # Define rotations for all objects
+        quat_configs = [
+            np.array([
+                euler2quat(0, 0, np.pi),  # carrot
+                [1, 0, 0, 0],  # plate
+                euler2quat(0, 0, 0, 'sxyz'),  # eggplant
+                [1, 0, 0, 0]  # rabbit
+            ]), # size: 4 x 4
+            np.array([
+                euler2quat(0, 0, -np.pi/2),  # carrot
+                [1, 0, 0, 0],  # plate
+                euler2quat(0, 0, 1 * np.pi / 4, 'sxyz'),  # eggplant
+                [1, 0, 0, 0]  # rabbit
+            ])
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            other_obj_names=additional_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )   
+    
+    def get_language_instruction(self, **kwargs):
+        return "put rabbit's favorite vegetable on the plate"
