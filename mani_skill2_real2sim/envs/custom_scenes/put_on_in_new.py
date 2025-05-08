@@ -22,7 +22,7 @@ class PutGreenCubeOnPlateInScene(PutOnBridgeInSceneEnv):
     def __init__(self, **kwargs):
         source_obj_name = "baked_green_cube_3cm"
         target_obj_name = "bridge_plate_objaverse_larger"
-        
+
         xy_center = np.array([-0.16, 0.00])
         half_edge_length_x = 0.075
         half_edge_length_y = 0.075
@@ -100,7 +100,7 @@ class PutCokeCanOnPlateInScene(PutOnBridgeInSceneEnv):
     def __init__(self, **kwargs):
         source_obj_name = "coke_can"
         target_obj_name = "bridge_plate_objaverse_larger"
-        
+
         xy_center = np.array([-0.16, 0.00])
         half_edge_length_x = 0.075
         half_edge_length_y = 0.075
@@ -141,6 +141,54 @@ class PutCokeCanOnPlateInScene(PutOnBridgeInSceneEnv):
 
     def get_language_instruction(self, **kwargs):
         return "put coke can on plate"
+    
+
+@register_env("PutPepsiCanOnPlateInScene-v2", max_episode_steps=60)
+class PutPepsiCanOnPlateInScene(PutOnBridgeInSceneEnv):
+    def __init__(self, **kwargs):
+        source_obj_name = "pepsi_can"
+        target_obj_name = "bridge_plate_objaverse_larger"
+
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = (
+            grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None]
+            + xy_center[None]
+        )
+
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    xy_configs.append(np.array([grid_pos_1, grid_pos_2]))
+
+        quat_configs = [
+            np.array(
+                [
+                    euler2quat(np.pi/2, 0, 0),  # upright can
+                    [1, 0, 0, 0]
+                ]
+            ),
+            np.array(
+                [
+                    euler2quat(0, 0, np.pi/2),  # lay vertically can
+                    [1, 0, 0, 0]
+                ]
+            ),
+        ]
+
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+
+    def get_language_instruction(self, **kwargs):
+        return "put pepsi can on plate"
 
 
 @register_env("PutCarrotOnSpongeInScene-v2", max_episode_steps=60)
@@ -148,7 +196,7 @@ class PutCarrotOnSpongeInScene(PutOnBridgeInSceneEnv):
     def __init__(self, **kwargs):
         source_obj_name = "bridge_carrot_generated_modified"
         target_obj_name = "sponge"
-        
+
         xy_center = np.array([-0.16, 0.00])
         half_edge_length_x = 0.075
         half_edge_length_y = 0.075
@@ -188,14 +236,154 @@ class PutCarrotOnSpongeInScene(PutOnBridgeInSceneEnv):
 
     def get_language_instruction(self, **kwargs):
         return "put carrot on sponge"
-        
-        
+    
+@register_env("PutCarrotOnSpongeLargerInScene-v2", max_episode_steps=60)
+class PutCarrotOnSpongeLargerInScene(PutOnBridgeInSceneEnv):
+    def __init__(self, **kwargs):
+        source_obj_name = "bridge_carrot_generated_modified"
+        target_obj_name = "sponge_larger"
+
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = (
+            grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None]
+            + xy_center[None]
+        )
+
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    xy_configs.append(np.array([grid_pos_1, grid_pos_2]))
+
+        quat_configs = [
+            np.array(
+                [
+                    euler2quat(0, 0, np.pi), 
+                    [1, 0, 0, 0]
+                ]
+            ),
+            np.array(
+                [
+                    euler2quat(0, 0, -np.pi / 2), 
+                    [1, 0, 0, 0]
+                ]
+            ),
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+
+    def get_language_instruction(self, **kwargs):
+        return "put carrot on sponge"
+
+
+@register_env("PutEggplantOnSpongeInScene-v2", max_episode_steps=60)
+class PutEggplantOnSpongeInScene(PutOnBridgeInSceneEnv):
+    def __init__(self, **kwargs):
+        source_obj_name = "eggplant"
+        target_obj_name = "sponge"
+
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = (
+            grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None]
+            + xy_center[None]
+        )
+
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    xy_configs.append(np.array([grid_pos_1, grid_pos_2]))
+
+        quat_configs = [
+            np.array(
+                [
+                    euler2quat(0, 0, 0, 'sxyz'),  # eggplant 
+                    [1, 0, 0, 0]
+                ]
+            ),
+            np.array(
+                [
+                    euler2quat(0, 0, 1 * np.pi / 4, 'sxyz'),  # eggplant
+                    [1, 0, 0, 0]
+                ]
+            ),
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+
+    def get_language_instruction(self, **kwargs):
+        return "put eggplant on sponge"
+    
+
+@register_env("PutEggplantOnSpongeLargerInScene-v2", max_episode_steps=60)
+class PutEggplantOnSpongeLargerInScene(PutOnBridgeInSceneEnv):
+    def __init__(self, **kwargs):
+        source_obj_name = "eggplant"
+        target_obj_name = "sponge_larger"
+
+        xy_center = np.array([-0.16, 0.00])
+        half_edge_length_x = 0.075
+        half_edge_length_y = 0.075
+        grid_pos = np.array([[0, 0], [0, 1], [1, 0], [1, 1]]) * 2 - 1
+        grid_pos = (
+            grid_pos * np.array([half_edge_length_x, half_edge_length_y])[None]
+            + xy_center[None]
+        )
+
+        xy_configs = []
+        for i, grid_pos_1 in enumerate(grid_pos):
+            for j, grid_pos_2 in enumerate(grid_pos):
+                if i != j:
+                    xy_configs.append(np.array([grid_pos_1, grid_pos_2]))
+
+        quat_configs = [
+            np.array(
+                [
+                    euler2quat(0, 0, 0, 'sxyz'),  # eggplant 
+                    [1, 0, 0, 0]
+                ]
+            ),
+            np.array(
+                [
+                    euler2quat(0, 0, 1 * np.pi / 4, 'sxyz'),  # eggplant
+                    [1, 0, 0, 0]
+                ]
+            ),
+        ]
+        super().__init__(
+            source_obj_name=source_obj_name,
+            target_obj_name=target_obj_name,
+            xy_configs=xy_configs,
+            quat_configs=quat_configs,
+            **kwargs,
+        )
+
+    def get_language_instruction(self, **kwargs):
+        return "put eggplant on sponge"
+    
+
 @register_env("PutCarrotOnKeyboardInScene-v2", max_episode_steps=60)
 class PutCarrotOnKeyboardInScene(PutOnBridgeInSceneEnv):
     def __init__(self, **kwargs):
         source_obj_name = "bridge_carrot_generated_modified"
         target_obj_name = "keyboard_smaller"
-        
+
         xy_center = np.array([-0.16, 0.00])
         half_edge_length_x = 0.075
         half_edge_length_y = 0.075
@@ -456,6 +644,13 @@ class PutCarrotOnKeyboardInSceneLangV1(PutCarrotOnKeyboardInSceneDistract):
 class PutCokeCanOnPlateInSceneLangV1(PutCokeCanOnPlateInSceneDistract):
     def get_language_instruction(self, **kwargs):
         return "put coke can, not the carrot, not the pepsi can, on the plate"
+    
+# clean, no distraction, language common sense
+@register_env("PutCokeCanOnPlateInScene-LangV3", max_episode_steps=60)
+class PutCokeCanOnPlateInSceneLangV3(PutCokeCanOnPlateInScene):
+    def get_language_instruction(self, **kwargs):
+        return "put the object that one needs the most when they are thirsty on plate"
+    
 
 # * language variation -> common sense
 @register_env("PutCokeCanOnPlateInScene-LangV2", max_episode_steps=60)

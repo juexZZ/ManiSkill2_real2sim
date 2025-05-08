@@ -371,6 +371,11 @@ class StackGreenCubeOnYellowCubeBakedTexInScene(StackGreenCubeOnYellowCubeInScen
         super().__init__(
             source_obj_name=source_obj_name, target_obj_name=target_obj_name, **kwargs
         )
+        
+@register_env("StackGreenCubeOnYellowCubeBakedTexInScene-LangV1", max_episode_steps=60)
+class StackGreenCubeOnYellowCubeBakedTexInSceneLangV1(StackGreenCubeOnYellowCubeBakedTexInScene):
+    def get_language_instruction(self, **kwargs):
+        return "pick up the green block and drop it on top of the yellow block"
 
 
 @register_env("PutEggplantInBasketScene-v0", max_episode_steps=120)
@@ -1131,6 +1136,11 @@ class PutSpoonOnTableClothInSceneLangV1(PutSpoonOnTableClothInScene):
     def get_language_instruction(self, **kwargs):
         return "put the kitchenware for eating soup on the towel"
     
+@register_env("PutSpoonOnTableClothInScene-LangV3", max_episode_steps=60)
+class PutSpoonOnTableClothInSceneLangV3(PutSpoonOnTableClothInScene):
+    def get_language_instruction(self, **kwargs):
+        return "pick up the spoon and drop it off on the towel"
+    
 @register_env("PutSpoonOnTableClothInScene-LangV2", max_episode_steps=60)
 class PutSpoonOnTableClothInSceneLangV2(PutOnBridgeInSceneEnvV1):
     def __init__(self, **kwargs):
@@ -1192,7 +1202,13 @@ class PutEggplantInBasketSceneLangV1(PutEggplantInBasketScene):
 @register_env("PutEggplantInBasketScene-LangV2", max_episode_steps=120)
 class PutEggplantInBasketSceneLangV2(PutEggplantInBasketScene):
     def get_language_instruction(self, **kwargs):
-        return "put eggplant into where the dishes usually get dried"    
+        return "put eggplant into where the dishes usually get dried"
+
+
+@register_env("PutEggplantInBasketScene-LangV3", max_episode_steps=120)
+class PutEggplantInBasketSceneLangV3(PutEggplantInBasketScene):
+    def get_language_instruction(self, **kwargs):
+        return "pick up the eggplant and drop it off into the yellow basket"    
     
 
 @register_env("PutCarrotOnPlateInScene-LangV4", max_episode_steps=60)
@@ -1300,7 +1316,7 @@ class PutCarrotOnPlateInSceneLangV4(PutCarrotOnPlateInScene):
             episode_stats=self.episode_stats,
             success=success,
         )
-    
+
 
 @register_env("PutCarrotOnPlateInScene-LangV5", max_episode_steps=60)
 class PutCarrotOnPlateInSceneLangV5(PutOnBridgeInSceneEnvV1):
@@ -1310,7 +1326,7 @@ class PutCarrotOnPlateInSceneLangV5(PutOnBridgeInSceneEnvV1):
         # add addional object to the scene
         additional_obj_name = ["eggplant", "rabbit"]
         model_ids = [source_obj_name, target_obj_name] + additional_obj_name
-        
+
         # Define positions for all objects
         xy_center = np.array([-0.16, 0.00])
         half_edge_length_x = 0.075
@@ -1350,7 +1366,7 @@ class PutCarrotOnPlateInSceneLangV5(PutOnBridgeInSceneEnvV1):
             xy_configs=xy_configs,
             quat_configs=quat_configs,
             **kwargs,
-        )   
-    
+        )
+
     def get_language_instruction(self, **kwargs):
         return "put rabbit's favorite vegetable on the plate"
