@@ -16,7 +16,7 @@ from .move_near_in_scene import MoveNearInSceneEnv
 class PutOnInSceneEnv(MoveNearInSceneEnv):
     
     def reset(self, *args, **kwargs):
-        self.consecutive_grasp = 0 
+        self.consecutive_grasp = 0
         return super().reset(*args, **kwargs)
 
     def _initialize_episode_stats(self):
@@ -26,6 +26,7 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
             is_src_obj_grasped=False,
             consecutive_grasp=False,
             src_on_target=False,
+            source_intention=False,
         )
 
     def _set_model(self, model_ids, model_scales):
@@ -43,6 +44,16 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
     def evaluate(self, success_require_src_completely_on_target=True, z_flag_required_offset=0.02, **kwargs):
         source_obj_pose = self.source_obj_pose
         target_obj_pose = self.target_obj_pose
+
+        # whether robot has intention to move the source object ever
+        # determined by contact between the source object and the robot gripper
+        made_contact = any(self.agent.check_contact_fingers(self.episode_source_obj))
+        ee_pose = self.agent.ee_pose.p
+        #ee_source_xy_dist = np.linalg.norm(ee_pose[:2] - source_obj_pose.p[:2])
+        #ee_source_z_dist = abs(ee_pose[2] - source_obj_pose.p[2])
+        ee_source_dist = np.linalg.norm(ee_pose - source_obj_pose.p)
+        close_enough = ee_source_dist <0.05 # ee_source_xy_dist < 0.03 and ee_source_z_dist < 0.03
+        source_intention_now = made_contact or close_enough
 
         # whether moved the correct object
         source_obj_xy_move_dist = np.linalg.norm(
@@ -128,6 +139,10 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
         )
         self.episode_stats["consecutive_grasp"] = (
             self.episode_stats["consecutive_grasp"] or consecutive_grasp
+        )
+        # add source intention to the episode stats, true if Ever made contact or close enough
+        self.episode_stats["source_intention"] = (
+            self.episode_stats["source_intention"] or source_intention_now
         )
 
         return dict(
@@ -492,8 +507,8 @@ class PutEggplantInBasketScene(PutOnBridgeInSceneEnv):
             scale=5,
             shadow_map_size=2048,
         )
-        
-        
+
+
 class PutOnBridgeInSceneEnvV1(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
     """adding object distrctions, now support 4 objects in the scene"""
     def __init__(self,
@@ -514,8 +529,8 @@ class PutOnBridgeInSceneEnvV1(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
         self._xy_configs = xy_configs
         self._quat_configs = quat_configs
         super().__init__(**kwargs)
-        
-        
+
+
     # override the _setup_prepackaged_env_init_config method
     def _setup_prepackaged_env_init_config(self):
         ret = {}
@@ -1209,17 +1224,28 @@ class PutEggplantInBasketSceneLangV2(PutEggplantInBasketScene):
 class PutEggplantInBasketSceneLangV3(PutEggplantInBasketScene):
     def get_language_instruction(self, **kwargs):
         return "pick up the eggplant and drop it off into the yellow basket"    
-    
+
 
 @register_env("PutCarrotOnPlateInScene-LangV4", max_episode_steps=60)
 class PutCarrotOnPlateInSceneLangV4(PutCarrotOnPlateInScene):
     def get_language_instruction(self, **kwargs):
         return "pick up the carrot and drop it elsewhere on the table, not on the plate."
-    
+
     # * modify the evaluate function to reflect this abnormal language instruction, basically a nagation of the success condition.
     def evaluate(self, success_require_src_completely_on_target=True, z_flag_required_offset=0.02, **kwargs):
         source_obj_pose = self.source_obj_pose
         target_obj_pose = self.target_obj_pose
+
+        # whether robot has intention to move the source object ever
+        # determined by contact between the source object and the robot gripper
+        made_contact = any(self.agent.check_contact_fingers(self.episode_source_obj))
+        ee_pose = self.agent.ee_pose.p
+        # ee_source_xy_dist = np.linalg.norm(ee_pose[:2] - source_obj_pose.p[:2])
+        # ee_source_z_dist = abs(ee_pose[2] - source_obj_pose.p[2])
+        # close_enough = ee_source_xy_dist < 0.03 and ee_source_z_dist < 0.03
+        ee_source_dist = np.linalg.norm(ee_pose - source_obj_pose.p)
+        close_enough = ee_source_dist <0.05 # ee_source_xy_dist < 0.03 and ee_source_z_dist < 0.03
+        source_intention_now = made_contact or close_enough
 
         # whether moved the correct object
         source_obj_xy_move_dist = np.linalg.norm(
@@ -1306,6 +1332,10 @@ class PutCarrotOnPlateInSceneLangV4(PutCarrotOnPlateInScene):
         self.episode_stats["consecutive_grasp"] = (
             self.episode_stats["consecutive_grasp"] or consecutive_grasp
         )
+        # add source intention to the episode stats, true if Ever made contact or close enough
+        self.episode_stats["source_intention"] = (
+            self.episode_stats["source_intention"] or source_intention_now
+        )
 
         return dict(
             moved_correct_obj=moved_correct_obj,
@@ -1370,3 +1400,78 @@ class PutCarrotOnPlateInSceneLangV5(PutOnBridgeInSceneEnvV1):
 
     def get_language_instruction(self, **kwargs):
         return "put rabbit's favorite vegetable on the plate"
+    
+    
+# visual variation
+@register_env("PutEggplantInBasketScene-light-v1", max_episode_steps=120)
+class PutEggplantInBasketSceneBrighter(PutEggplantInBasketScene):
+    def _setup_lighting(self):
+        if self.bg_name is not None:
+            return
+
+        shadow = self.enable_shadow
+
+        self._scene.set_ambient_light([1.0, 0.2, 0.2])
+        self._scene.add_directional_light(
+            [0, 0, -1],
+            [1.6, 0.6, 0.6],
+            position=[0, 0, 1],
+            shadow=shadow,
+            scale=5,
+            shadow_map_size=2048,
+        )
+        
+# visual variation
+@register_env("PutEggplantInBasketScene-light-v2", max_episode_steps=120)
+class PutEggplantInBasketSceneDarker(PutEggplantInBasketScene):
+    def _setup_lighting(self):
+        if self.bg_name is not None:
+            return
+
+        shadow = self.enable_shadow
+
+        self._scene.set_ambient_light([0.1, 0.1, 0.2])
+        self._scene.add_directional_light(
+            [0, 0, -1],
+            [0.2, 0.2, 1.2],
+            position=[0, 0, 1],
+            shadow=shadow,
+            scale=5,
+            shadow_map_size=2048,
+        )
+
+@register_env("PutCarrotOnPlateInScene-light-v1", max_episode_steps=60)
+class PutCarrotOnPlateInSceneBrighter(PutCarrotOnPlateInScene):
+    def _setup_lighting(self):
+        if self.bg_name is not None:
+            return
+
+        shadow = self.enable_shadow
+
+        self._scene.set_ambient_light([1.6, 0.6, 0.6])
+        self._scene.add_directional_light(
+            [0, 0, -1],
+            [3.2, 1.2, 1.2],
+            position=[0, 0, 1],
+            shadow=shadow,
+            scale=5,
+            shadow_map_size=2048,
+        )
+
+@register_env("PutCarrotOnPlateInScene-light-v2", max_episode_steps=60)
+class PutCarrotOnPlateInSceneDarker(PutCarrotOnPlateInScene):
+    def _setup_lighting(self):
+        if self.bg_name is not None:
+            return
+
+        shadow = self.enable_shadow
+
+        self._scene.set_ambient_light([0.2, 0.2, 0.5])
+        self._scene.add_directional_light(
+            [0, 0, -1],
+            [0.2, 0.2, 2.2],
+            position=[0, 0, 1],
+            shadow=shadow,
+            scale=5,
+            shadow_map_size=2048,
+        )
