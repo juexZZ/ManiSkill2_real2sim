@@ -41,7 +41,7 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
 
         return super()._set_model(model_ids, model_scales)
 
-    def evaluate(self, success_require_src_completely_on_target=True, z_flag_required_offset=0.02, **kwargs):
+    def evaluate(self, success_require_src_completely_on_target=True, z_flag_required_offset=0.02, success_include_src_in_target=False, **kwargs):
         source_obj_pose = self.source_obj_pose
         target_obj_pose = self.target_obj_pose
 
@@ -101,6 +101,15 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
             <= z_flag_required_offset
         )
         src_on_target = xy_flag and z_flag
+        
+        # whether src is in target
+        # ! DEBUG
+        print("np.linalg.norm(offset[:2])", np.linalg.norm(offset[:2]), "np.linalg.norm(tgt_obj_half_length_bbox[:2])", np.linalg.norm(tgt_obj_half_length_bbox[:2]))
+        print("offset[2]", offset[2], "diff", offset[2] - tgt_obj_half_length_bbox[2] - src_obj_half_length_bbox[2])
+        in_xy_flag = np.linalg.norm(offset[:2]) <= np.linalg.norm(tgt_obj_half_length_bbox[:2])
+        in_z_flag = offset[2] - tgt_obj_half_length_bbox[2] - src_obj_half_length_bbox[2] <= z_flag_required_offset
+        print("in_xy_flag", in_xy_flag, "in_z_flag", in_z_flag)
+        src_in_target = in_xy_flag and in_z_flag
 
         if success_require_src_completely_on_target:
             # whether the source object is on the target object based on contact information
@@ -130,6 +139,10 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
             src_on_target = src_on_target and flag
 
         success = src_on_target
+        
+        # * if src is in target, also consider it as successful
+        if success_include_src_in_target:
+            success = success or src_in_target
 
         self.episode_stats["moved_correct_obj"] = moved_correct_obj
         self.episode_stats["moved_wrong_obj"] = moved_wrong_obj
@@ -193,6 +206,8 @@ class PutOnBridgeInSceneEnv(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
         return ret
 
     def reset(self, seed=None, options=None):
+        # ! DEBUG
+        print("Reset PutOnBridgeInSceneEnv")
         if options is None:
             options = dict()
         options = options.copy()
@@ -1151,10 +1166,21 @@ class PutSpoonOnTableClothInSceneLangV1(PutSpoonOnTableClothInScene):
     def get_language_instruction(self, **kwargs):
         return "put the kitchenware for eating soup on the towel"
     
+@register_env("PutSpoonOnTableClothInScene-LangV4", max_episode_steps=60)
+class PutSpoonOnTableClothInSceneLangV4(PutSpoonOnTableClothInScene):
+    def get_language_instruction(self, **kwargs):
+        return "put the spoon on the towel, not on the plate"
+    
 @register_env("PutSpoonOnTableClothInScene-LangV3", max_episode_steps=60)
 class PutSpoonOnTableClothInSceneLangV3(PutSpoonOnTableClothInScene):
     def get_language_instruction(self, **kwargs):
         return "pick up the spoon and drop it off on the towel"
+
+
+@register_env("PutSpoonOnTableClothInScene-LangV5", max_episode_steps=60)
+class PutSpoonOnTableClothInSceneLangV5(PutSpoonOnTableClothInScene):
+    def get_language_instruction(self, **kwargs):
+        return "put the shiny object with green handle on the blue object"
     
 @register_env("PutSpoonOnTableClothInScene-LangV2", max_episode_steps=60)
 class PutSpoonOnTableClothInSceneLangV2(PutOnBridgeInSceneEnvV1):
@@ -1225,6 +1251,13 @@ class PutEggplantInBasketSceneLangV3(PutEggplantInBasketScene):
     def get_language_instruction(self, **kwargs):
         return "pick up the eggplant and drop it off into the yellow basket"    
 
+# language, appearance
+@register_env("PutCarrotOnPlateInScene-LangV6", max_episode_steps=60)
+class PutCarrotOnPlateInSceneLangV6(PutCarrotOnPlateInScene):
+    def get_language_instruction(self, **kwargs):
+        return "put the orange object on the yellow object"
+    
+    
 
 @register_env("PutCarrotOnPlateInScene-LangV4", max_episode_steps=60)
 class PutCarrotOnPlateInSceneLangV4(PutCarrotOnPlateInScene):
@@ -1294,32 +1327,6 @@ class PutCarrotOnPlateInSceneLangV4(PutCarrotOnPlateInScene):
         )
         src_on_target = xy_flag and z_flag
 
-        # if success_require_src_completely_on_target:
-        #     # whether the source object is on the target object based on contact information
-        #     contacts = self._scene.get_contacts()
-        #     flag = True
-        #     robot_link_names = [x.name for x in self.agent.robot.get_links()]
-        #     tgt_obj_name = self.episode_target_obj.name
-        #     ignore_actor_names = [tgt_obj_name] + robot_link_names
-        #     for contact in contacts:
-        #         actor_0, actor_1 = contact.actor0, contact.actor1
-        #         other_obj_contact_actor_name = None
-        #         if actor_0.name == self.episode_source_obj.name:
-        #             other_obj_contact_actor_name = actor_1.name
-        #         elif actor_1.name == self.episode_source_obj.name:
-        #             other_obj_contact_actor_name = actor_0.name
-        #         if other_obj_contact_actor_name is not None:
-        #             # the object is in contact with an actor
-        #             contact_impulse = np.sum(
-        #                 [point.impulse for point in contact.points], axis=0
-        #             )
-        #             if (other_obj_contact_actor_name not in ignore_actor_names) and (
-        #                 np.linalg.norm(contact_impulse) > 1e-6
-        #             ):
-        #                 # the object has contact with an actor other than the robot link or the target object, so the object is not yet put on the target object
-        #                 flag = False
-        #                 break
-        #     src_on_target = src_on_target and flag
         # ! negate the success condition: moved the correct object, and it is not on the target object.
         success = (not src_on_target) and moved_correct_obj and consecutive_grasp
 
