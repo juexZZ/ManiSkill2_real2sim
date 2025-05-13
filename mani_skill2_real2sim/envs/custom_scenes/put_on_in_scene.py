@@ -103,12 +103,8 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
         src_on_target = xy_flag and z_flag
         
         # whether src is in target
-        # ! DEBUG
-        print("np.linalg.norm(offset[:2])", np.linalg.norm(offset[:2]), "np.linalg.norm(tgt_obj_half_length_bbox[:2])", np.linalg.norm(tgt_obj_half_length_bbox[:2]))
-        print("offset[2]", offset[2], "diff", offset[2] - tgt_obj_half_length_bbox[2] - src_obj_half_length_bbox[2])
         in_xy_flag = np.linalg.norm(offset[:2]) <= np.linalg.norm(tgt_obj_half_length_bbox[:2])
         in_z_flag = offset[2] - tgt_obj_half_length_bbox[2] - src_obj_half_length_bbox[2] <= z_flag_required_offset
-        print("in_xy_flag", in_xy_flag, "in_z_flag", in_z_flag)
         src_in_target = in_xy_flag and in_z_flag
 
         if success_require_src_completely_on_target:
@@ -206,8 +202,6 @@ class PutOnBridgeInSceneEnv(PutOnInSceneEnv, CustomBridgeObjectsInSceneEnvV1):
         return ret
 
     def reset(self, seed=None, options=None):
-        # ! DEBUG
-        print("Reset PutOnBridgeInSceneEnv")
         if options is None:
             options = dict()
         options = options.copy()

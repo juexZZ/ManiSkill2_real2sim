@@ -1119,8 +1119,6 @@ class PutCokeCanOnWheelInScene(PutOnBridgeInSceneEnv):
     def __init__(self, **kwargs):
         source_obj_name = "coke_can"
         target_obj_name = "wheel"
-        # ! DEBUG
-        print("Evalute coke can on wheel")
         
         xy_center = np.array([-0.16, 0.00])
         half_edge_length_x = 0.075
@@ -1172,8 +1170,6 @@ class PutNutOnWheelInScene(PutOnBridgeInSceneEnv):
     def __init__(self, **kwargs):
         source_obj_name = "nut"
         target_obj_name = "wheel"
-        # ! DEBUG
-        print("Evalute nut on wheel")
         
         xy_center = np.array([-0.16, 0.00])
         half_edge_length_x = 0.075
