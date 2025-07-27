@@ -27,6 +27,8 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
             consecutive_grasp=False,
             src_on_target=False,
             source_intention=False,
+            made_contact=False,
+            src_ever_on_target=False,
         )
 
     def _set_model(self, model_ids, model_scales):
@@ -152,6 +154,14 @@ class PutOnInSceneEnv(MoveNearInSceneEnv):
         # add source intention to the episode stats, true if Ever made contact or close enough
         self.episode_stats["source_intention"] = (
             self.episode_stats["source_intention"] or source_intention_now
+        )
+        # ! can also track if made contact with the source object
+        self.episode_stats["made_contact"] = (
+            self.episode_stats["made_contact"] or made_contact
+        )
+        # ! track is source object is ever on the target object at any time
+        self.episode_stats["src_ever_on_target"] = (
+            self.episode_stats["src_ever_on_target"] or src_on_target
         )
 
         return dict(
@@ -1252,7 +1262,7 @@ class PutCarrotOnPlateInSceneLangV6(PutCarrotOnPlateInScene):
         return "put the orange object on the yellow object"
     
     
-
+# ! this task is abandonded
 @register_env("PutCarrotOnPlateInScene-LangV4", max_episode_steps=60)
 class PutCarrotOnPlateInSceneLangV4(PutCarrotOnPlateInScene):
     def get_language_instruction(self, **kwargs):
